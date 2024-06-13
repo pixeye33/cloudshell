@@ -126,7 +126,6 @@ kg TYPE : get (default: pod)
 kgir : explore ingressroute
 krrd : rollout restart deployment
 kds : decrypt secret
-hd : helm dashboard
 EOF
 }
 
