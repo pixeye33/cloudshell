@@ -132,4 +132,7 @@ EOF
 
 eval "$(fzf --bash)"
 
-eval "$(~/.local/bin/zoxide init bash --cmd cd)"ls
+eval "$(~/.local/bin/zoxide init bash --cmd cd)"
+
+echo "restart shell, and enter 'azk' to populate kubeconfig"
+echo "use 'man' to discover aliases"
