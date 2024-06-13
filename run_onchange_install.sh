@@ -16,3 +16,6 @@ sed -i '/kubectl logs/d' ~/.kubectl_aliases
 sed -i '/kubectl describe/d' ~/.kubectl_aliases
 sed -i '/kg=/d' ~/.kubectl_aliases
 sed -ri 's/kubectl/_kubecolor/g' ~/.kubectl_aliases
+
+echo "restart shell, and enter 'azk' to populate kubeconfig"
+echo "use 'man' to discover aliases"
