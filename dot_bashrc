@@ -1,0 +1,135 @@
+# Begin ~/.bashrc
+# Written for Beyond Linux From Scratch
+# by James Robertson <jameswrobertson@earthlink.net>
+
+# Personal aliases and functions.
+
+# Personal environment variables and startup programs should go in
+# ~/.bash_profile.  System wide environment variables and startup
+# programs are in /etc/profile.  System wide aliases and functions are
+# in /etc/bashrc.
+
+if [ -f "/etc/bash.bashrc" ] ; then
+  source /etc/bash.bashrc
+fi
+
+# End ~/.bashrc
+source /etc/bash_completion.d/azure-cli
+#ADDED_HIST_APPEND_CHECK
+shopt -s histappend
+#ADDED_HIST_CONTROL_CHECK
+HISTCONTROL=ignoreboth
+#ADDED_HIST_PROMPT_COMMAND_CHECK
+PROMPT_COMMAND="history -a; history -c; history -r; $PROMPT_COMMAND"
+PS1=${PS1//\\h/Azure}
+source /usr/bin/cloudshellhelp
+
+export PATH=$HOME/.local/bin:$PATH
+
+[ -f ~/.kubectl_aliases ] && source ~/.kubectl_aliases
+
+alias kubectl="_kubecolor"
+
+command -v fzf >/dev/null 2>&1 && { 
+        source <(kubectl completion bash | sed 's#"${requestComp}" 2>/dev/null#"${requestComp}" 2>/dev/null | head -n -1 | fzf  --multi=0 #g')
+}
+
+azsub() {
+  az fzf subscription
+}
+
+azgrp() {
+  az fzf group
+}
+
+azk() {
+  for sub in $(az account list --query '[].name' -o table | grep '^Lectra-CloudServices'); do
+    for rg in $(az group list --subscription ${sub} --query '[].name' -o table | grep '^aks'); do
+      az aks get-credentials --subscription ${sub} -g ${rg} --name $(az aks list --subscription ${sub} -g ${rg} -o json | jq -r ".[0].name") --overwrite-existing
+    done
+  done
+  kubelogin convert-kubeconfig -l devicecode 
+}
+
+kc() {
+  kubectl config use-context $(kubectl config get-contexts | fzf --header-lines 1 | awk '{ print $2 }')
+}
+
+kns() {
+  kubectl config set-context --current --namespace=$(kubectl get namespaces | fzf --header-lines 1 | awk '{ print $1 }')
+}
+
+krrd() {
+  kubectl rollout restart deployment $(kubectl get deployments | fzf --header-lines 1 | awk '{ print $1 }')
+}
+
+# get k8s resources, default to pods
+function krs() {
+  kubectl get ${1:-pods} --output=jsonpath='{range .items[*]}{.metadata.name}{"\n"}'
+}
+
+# use fzf to auto complete resource type for krs
+function _krs_completion() {
+  COMPREPLY=( $(kubectl api-resources -o name| fzf) )
+}
+complete -F _krs_completion krs
+
+# shorthand for k exec -ti <pod-name> -- ..., using fzf to select the pod
+function kex() {
+  pod=$(krs| fzf)
+  container=$(kubectl get pods $pod -o jsonpath="{range .spec['containers'][*]}{.name}{'\n'}"|fzf)
+  kubectl exec -ti $pod -c $container -- ${@:-bash}
+}
+
+# shorthand for k logs -f <pod-name> <container-name>, using fzf to select the pod
+function klo() {
+  pod=$(krs| fzf)
+  container=$(kubectl get pods $pod -o jsonpath="{range .spec['containers','initContainers'][*]}{.name}{'\n'}"|fzf)
+  kubectl logs -f $pod $container
+}
+
+function klo() {
+  pod=$(krs deployment | fzf)
+  kubectl stern $deployment
+}
+
+# shorthand for k describe <resource-type> <resource-name>, type defaults to pod and using fzf to select the resource
+function kd() {
+  kubectl describe ${1:-pod} $(krs ${1:-pod}| fzf)
+}
+complete -F _krs_completion kd
+
+function kg() {
+  kubectl get ${1:-pod} $(krs ${1:-pod}| fzf) -o yaml
+}
+complete -F _krs_completion kg
+
+function kgir() {
+  kubectl get ingressroutes -o custom-columns=NAMESPACE:.metadata.namespace,NAME:.metadata.name,MATCH:.spec.routes[*].match -A | fzf --query="Host(\`" -e
+}
+
+# decrypt secrets
+function kds() {
+  secret=$(krs secret| fzf)
+  kubectl get secret $secret -o go-template='{{range $k,$v := .data}}{{"### "}}{{$k}}{{"\n"}}{{$v|base64decode}}{{"\n\n"}}{{end}}'
+}
+
+function man() {
+  cat << EOF
+kc : switch context
+kns : switch namespace
+
+kex COMMAND : exectute comand in pod/container (default: bash)
+klo : stream logs
+kd TYPE : describe (default: pod)
+kg TYPE : get (default: pod)
+kgir : explore ingressroute
+krrd : rollout restart deployment
+kds : decrypt secret
+hd : helm dashboard
+EOF
+}
+
+eval "$(fzf --bash)"
+
+eval "$(~/.local/bin/zoxide init bash --cmd cd)"ls
