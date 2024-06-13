@@ -1,5 +1,7 @@
 #!/bin/sh
 
+curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | bash
+
 wget -qO- $(curl -sL https://api.github.com/repos/junegunn/fzf/releases/latest | jq -r '.assets[] | select(.name | test("^fzf-.*-linux_amd64.tar.gz$")) | .browser_download_url') | tar -zxvf - fzf && install -c -m 0755 fzf /home/dupouey/.local/bin/fzf
 
 az extension add --name fzf
