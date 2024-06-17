@@ -48,7 +48,7 @@ azk() {
       az aks get-credentials --subscription ${sub} -g ${rg} --name $(az aks list --subscription ${sub} -g ${rg} -o json | jq -r ".[0].name") --overwrite-existing
     done
   done
-  kubelogin convert-kubeconfig -l devicecode 
+  kubelogin convert-kubeconfig -l azurecli 
 }
 
 kc() {
